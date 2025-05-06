@@ -21,11 +21,6 @@ curl https://start.spring.io/starter.zip \
 
 ## 📦 依存関係一覧
 
-```plaintext
-
-
-
-```
 |依存関係|役割|入れていないと|
 |---|---|---|
 |Spring Boot DevTools|・ホットリロードでソース変更を即時反映<br>・キャッシュ無効化、自動再起動|・手動で再起動が必要<br>・テンプレートや設定が更新されないことがある|
@@ -36,5 +31,92 @@ Spring Data JDBC|CRUD自動実装・軽量なデータアクセス|DAOクラス�
 Oracle Driver|・Oracle DB接続用ドライバを提供|`ClassNotFoundException`で接続不可|
 Thymeleaf|HTMLテンプレートへ動的に埋め込み|JSPや他エンジンを選定・設定が必要|
 Spring Web| `@Controller`/`@RestController`等のMVC・REST機能|Webアプリ/APIが動作せずエラー|
-ojdbc11|・Oracle DBのドライバ|・Oracle DBに接続できない|
+
+
+## 主要アノテーション
+|アノテーション|用途|
+|---|---|
+|@SpringBootApplication|Spring Bootアプリケーションのエントリポイントを示す|
+|@RestController|REST APIのコントローラーを示す|
+|@GetMapping|HTTP GETリクエストを処理するメソッドを示す|
+|@PostMapping|HTTP POSTリクエストを処理するメソッドを示す|
+|@Service|ビジネスロジックを持つクラスを示す|
+|@Repository|データアクセスを行うクラスを示す|
+|@Entity, @id|JPAエンティティ|
+|@Autowired|依存性注入を行う|
+|@Valid|バリデーションを行う|
+|@Value("${property}")|プロパティ値の注入|
+|@Configuration, @Bean|独自のBeanを定義|
+
+## 基本的なフォルダ構成
+
+```plaintext
+demo/                           ← プロジェクトルート（artifactId）
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/example/demo/
+│   │   │        ├── DemoApplication.java       ← 起動クラス（mainメソッド）
+│   │   │        ├── controller/                ← Web API（@RestController）を置く
+│   │   │        │    └── UserController.java
+│   │   │        ├── service/                   ← ビジネスロジック層
+│   │   │        │    └── UserService.java
+│   │   │        ├── repository/                ← データアクセス層（リポジトリ）
+│   │   │        │    └── UserRepository.java
+│   │   │        └── model/                     ← エンティティ（@Entity）を置く
+│   │   │             └── User.java
+│   │   └── resources/
+│   │        ├── application.properties         ← 設定ファイル
+│   │        ├── static/                        ← 静的ファイル（HTML, CSS, JS）
+│   │        └── templates/                     ← テンプレートファイル（Thymeleafなど）
+│
+└── test/                                       ← テストコード用
+    └── java/com/example/demo/
+         └── UserControllerTest.java など
+```
+
+## DIとコンポーネントスキャン
+
+- DI（依存性注入）: @Autowired やコンストラクタで依存オブジェクトを注入
+
+- コンポーネントスキャン: @SpringBootApplication 配下パッケージを自動スキャン
+
+## Restコントローラ例
+
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    private final UserService svc;
+    public UserController(UserService svc) { this.svc = svc; }
+
+    @GetMapping
+    public List<User> getAll() { return svc.findAll(); }
+
+    @PostMapping
+    public User create(@Valid @RequestBody User u) {
+        return svc.create(u);
+    }
+}
+```
+
+## JPAエンティティ(データベースのテーブルと対応するJavaクラス)/リポジトリ例
+
+```java
+@Entity
+public class User {
+  @Id @GeneratedValue
+  private Long id;
+  private String name;
+  // getter/setter
+}
+
+public interface UserRepository extends JpaRepository<User, Long> {}
+```
+
+## テスト
+
+- 依存: spring-boot-starter-test
+
+- 基本: @SpringBootTest, @WebMvcTest, @DataJpaTest
 
