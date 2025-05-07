@@ -21,16 +21,17 @@ curl https://start.spring.io/starter.zip \
 
 ## 📦 依存関係一覧
 
-|依存関係|役割|入れていないと|
+| 依存関係 | 役割 | 入れていないと |
 |---|---|---|
-|Spring Boot DevTools|・ホットリロードでソース変更を即時反映<br>・キャッシュ無効化、自動再起動|・手動で再起動が必要<br>・テンプレートや設定が更新されないことがある|
-Lombok|・`@Getter`や`@Setter`等でボイラーテンプレートを自動生成<br>コード量とヒューマンエラーを削減|Getter/Setter/ToString/EqualsAndHashCode/Builder/NoArgsConstructor/AllArgsConstructorを手動で書く必要がある|
-Validation|・`@NotNull`,`@Size`等で入力を自動検証<br>・エラーレスポンスを簡単に生成|・手動でバリエーション実装が必要|
-JDBC API|`JdbcTemplate`等でSQL実行・マッピングを自動化|`java.sql`で毎回接続・例外・クローズを実装|
-Spring Data JDBC|CRUD自動実装・軽量なデータアクセス|DAOクラスを都度実装|
-Oracle Driver|・Oracle DB接続用ドライバを提供|`ClassNotFoundException`で接続不可|
-Thymeleaf|HTMLテンプレートへ動的に埋め込み|JSPや他エンジンを選定・設定が必要|
-Spring Web| `@Controller`/`@RestController`等のMVC・REST機能|Webアプリ/APIが動作せずエラー|
+| Spring Boot DevTools | ・ホットリロードでソース変更を即時反映<br>・キャッシュ無効化、自動再起動 | ・手動で再起動が必要<br>・テンプレートや設定が更新されないことがある |
+| Lombok | ・`@Getter`、`@Setter`、`@Data`などでボイラープレートコードを自動生成<br>・コード量とヒューマンエラーを削減 | ・Getter/Setter/ToString/EqualsAndHashCode/Builder/NoArgsConstructor/AllArgsConstructorを手動で書く必要がある |
+| Validation | ・`@NotNull`、`@Size`等で入力を自動バリデーション<br>・エラーレスポンスを簡単に生成 | ・手動でバリデーションを実装する必要がある |
+| JDBC API | ・`JdbcTemplate`などでSQL実行やマッピングを簡素化 | ・接続／クエリ／例外処理／リソース解放などを毎回手動で実装する必要がある |
+| Spring Data JDBC | ・リポジトリインターフェースによるCRUDの自動実装<br>・軽量なデータアクセスを提供 | ・毎回DAOクラスを実装する必要がある |
+| Oracle Driver | ・Oracle DBに接続するためのJDBCドライバ | ・`java.lang.ClassNotFoundException: oracle.jdbc.OracleDriver` などで接続不可 |
+| Thymeleaf | ・HTMLテンプレートに動的データを埋め込むテンプレートエンジン | ・JSP等の別テンプレートエンジンを使う必要あり |
+| Spring Web | ・`@Controller` / `@RestController` によるMVCやREST API機能を提供 | ・WebアプリやAPI機能が使えず、コントローラが動作しない |
+
 
 
 ## 主要アノテーション
