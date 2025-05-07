@@ -32,9 +32,8 @@ curl https://start.spring.io/starter.zip \
 | Thymeleaf | ・HTMLテンプレートに動的データを埋め込むテンプレートエンジン | ・JSP等の別テンプレートエンジンを使う必要あり |
 | Spring Web | ・`@Controller` / `@RestController` によるMVCやREST API機能を提供 | ・WebアプリやAPI機能が使えず、コントローラが動作しない |
 
-
-
 ## 主要アノテーション
+
 |アノテーション|用途|
 |---|---|
 |@SpringBootApplication|Spring Bootアプリケーションのエントリポイントを示す|
@@ -82,42 +81,211 @@ demo/                           ← プロジェクトルート（artifactId）
 
 - コンポーネントスキャン: @SpringBootApplication 配下パッケージを自動スキャン
 
-## Restコントローラ例
+## Controller/層：Web APIの窓口
 
 ```java
 @RestController
-@RequestMapping("/api/users")
+@RestMapping("/api/users")
 public class UserController {
-    private final UserService svc;
-    public UserController(UserService svc) { this.svc = svc; }
+  private final UserService userService;
 
-    @GetMapping
-    public List<User> getAll() { return svc.findAll(); }
+  // コンストラクタインジェクション
+  public UserController(UserService userService) {
+    this.userService = userService;
+  }
 
+  // 全ユーザ取得
+  @GetMapping
+  public List<User> getAll() {
+    return userService.findAll();
+  }
+
+  // IDで取得
+  @GetMapping("/{id}")
+  public ResponseEntity<User> getById(@PathVariable Long id) {
+    return userService.findById(id)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+    // 新規作成
     @PostMapping
-    public User create(@Valid @RequestBody User u) {
-        return svc.create(u);
+    public User create(@Valid @RequestBody User user) {
+        return userService.create(user);
+    }
+
+    // 更新
+    @PutMapping("/{id}")
+    public ResponseEntity<User> update(@PathVariable Long id, @Valid @RequestBody User user) {
+        return userService.update(id, user)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    // 削除
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (userService.delete(id)) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }
 ```
 
-## JPAエンティティ(データベースのテーブルと対応するJavaクラス)/リポジトリ例
+## service/ 層：ビジネスロジック
 
 ```java
-@Entity
-public class User {
-  @Id @GeneratedValue
-  private Long id;
-  private String name;
-  // getter/setter
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+
+    public UserService(UserRepository repo) {
+        this.userRepository = repo;
+    }
+
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public User create(User user) {
+        // 例：重複チェックなど
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new IllegalArgumentException("Email already in use");
+        }
+        return userRepository.save(user);
+    }
+
+    public Optional<User> update(Long id, User updated) {
+        return userRepository.findById(id).map(user -> {
+            user.setName(updated.getName());
+            user.setEmail(updated.getEmail());
+            return userRepository.save(user);
+        });
+    }
+
+    public boolean delete(Long id) {
+        if (!userRepository.existsById(id)) {
+            return false;
+        }
+        userRepository.deleteById(id);
+        return true;
+    }
 }
 
-public interface UserRepository extends JpaRepository<User, Long> {}
 ```
 
-## テスト
+## 3. repository/ 層：データアクセス
 
-- 依存: spring-boot-starter-test
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    // 追加クエリメソッドの例
+    boolean existsByEmail(String email);
+    List<User> findByNameContaining(String keyword);
+}
+```
 
-- 基本: @SpringBootTest, @WebMvcTest, @DataJpaTest
+## 4. model/ 層：エンティティ/ドメインモデル
 
+```java
+
+@Entity
+@Table(name = "users")
+public class User {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    @Email
+    private String email;
+
+    // Lombok を使う場合は @Data や @Getter @Setter などを付与
+    public User() {}
+    public User(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+    // getter / setter...
+}
+```
+
+## 5. resource/：設定とテンプレート
+
+- `application.properties`：アプリケーションの設定ファイル
+
+```properties
+# ポート設定
+server.port=8080
+
+# Datasource
+spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/XEPDB1
+spring.datasource.username=USER
+spring.datasource.password=PASS
+
+# JPA
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+```
+
+- `templates/users.html`：Thymeleaf テンプレート
+
+```html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>ユーザー一覧</title></head>
+<body>
+  <h1>ユーザー一覧</h1>
+  <ul>
+    <li th:each="u : ${users}">
+      <span th:text="${u.name}">Name</span> —
+      <span th:text="${u.email}">Email</span>
+    </li>
+  </ul>
+</body>
+</html>
+```
+
+## 6. test/ 層：単体テストの例
+
+- UserControllerTest.java
+
+```java
+@WebMvcTest(UserController.class)
+public class UserControllerTest {
+  @Autowired private MockMvc mvc;
+  @MockBean private UserService svc;
+
+  @Test
+  void getAll_ReturnsList() throws Exception {
+    given(svc.findAll()).willReturn(List.of(new User("Taro", "taro@example.com")));
+    mvc.perform(get("/api/users"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].name").value("Taro"));
+  }
+}
+```
+
+- UserServiceTest.java
+
+```java
+@ExtendWith(MockitoExtension.class)
+public class UserServiceTest {
+  @Mock private UserRepository repo;
+  @InjectMocks private UserService svc;
+
+  @Test
+  void create_DuplicateEmail_Throws() {
+    User u = new User("Taro", "taro@example.com");
+    when(repo.existsByEmail(u.getEmail())).thenReturn(true);
+    assertThrows(IllegalArgumentException.class, () -> svc.create(u));
+  }
+}
+```
